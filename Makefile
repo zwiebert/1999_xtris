@@ -2,11 +2,11 @@ CXXFLAGS=-Wall -g
 
 xt_cppflags= -DPF_VIEW=Xt_Play_Field_View -DPF_CTRL=Xt_Play_Field_Control
 xtobjs= framework.o gui_xt.o main.o mvc.o playfield.o
-xtlibs= -lXt -lXaw -lXmu -lX11
+xtlibs= -L/usr/X11R6/lib -lXt -lXaw -lXmu -lX11
 
 x_cppflags= -DPF_VIEW=X_Play_Field_View -DPF_CTRL=X_Play_Field_Control
 xobjs= framework.o gui_x.o main.o mvc.o playfield.o
-xlibs= -lX11
+xlibs= -L/usr/X11R6/lib -lX11
 
 CPPFLAGS=$(xt_cppflags)
 objs=$(xtobjs)
