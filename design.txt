@@ -1,0 +1,29 @@
+
+* statisch:
+** Spielstein
+*** Taktgeber für Spielstein-Bewegung von Nord nach Süd
+*** nach dem Aufprall zerfaellt der Spielstein in seine Bestandteile
+    (Rechtecke)
+*** Erscheinung eines Spielsteines: Die Atome des Spielsteins
+    verdecken die Atome des Spielfeldes
+
+* dynamisch:
+*** Taktgeber bewirkt NS Bewegung des _aktuellen_ Spielsteins.
+*** User waehlt Taktgeberfrequenz aus Menü.
+*** User positioniert Stein auf Spielfeld:
+**** User bewegt Stein seitlich nach Osten oder Westen
+**** User rotiert Stein um 90 Grad im Uhrzeigersinn
+**** User beschleunigt Taktgeber temporaer um Stein schneller fallen
+     zu lassen
+
+**** View sagt einen oder mehrere der aktuellen Steine vorraus.
+**** _nach_ dem Aufprall: Programm überprüft auf Vollstaendigkeit
+     einer Reihe:
+***** wenn nicht vollstaendig: tue nichts
+***** wenn vollstaendig: entferne Reihe
+
+
+Local variables:
+mode: outline
+paragraph-separate: "[ 	]*$"
+end:

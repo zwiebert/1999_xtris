@@ -1,0 +1,17 @@
+** Der XtVa-Prefix kennzeichnet die VarArgs Variante einer Xt-Prefix
+Funktion.
+
+** Die Attribute jedes Widgets lassen sich ohne Neukompilierung über
+das Resourcefile und userabhaengig ueber ~/.Xdefaults ändern.
+z.B:
+Tetris*Quit.font: -*-helvetica-bold-r-*-*-17-*-*-*-*-*-*-*
+Tetris*Quit.label: Beenden
+
+** Um Nutzen von .Xdefaults zu ziehen braucht man vmtl. nur eigene
+Widgets zu programmieren.
+
+** Das Beenden einer Xt-App mit exit() aus einem CallBack (nur?)  muss
+2 stufig erfolgen: 1. Widgets zerstoeren, 2. Einen Aufruf von exit(3)
+mit XtAppAddWorkProc(3Xt) installieren.  Nun den Callback verlassen.
+(Fuer den Grund sieh die Xt-FAQ)
+

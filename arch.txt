@@ -1,0 +1,57 @@
+
+* dynamisch (Funktionen):
+** Spielstein
+*** Bewegungen
+**** Richtungen:
+***** relativ zum Spielfeld: Süd, Ost, West
+***** relativ zum Mittelpunkt: Rotation um 90 Grad im Uhrzeigersinn
+**** Geschwindigkeiten:
+***** einstellbar bei Richtung Süd (hohe Geschwindigkeit erhöht
+      den Schwierigkeitsgrad)
+***** unendlich bei Richtungen Ost und West sowie bei Rotation
+
+** Spielfeld
+*** Festlegen von Höhe und Breite bei Initialisierung
+*** Testen auf Aufprall eines Spielsteins
+*** Testen auf Zulässigkeit von Spielstein-Drehungen
+
+** Steuerung
+*** der Spielstein-Bewegungen: direkt durch Usereingabe.
+*** der Spielstein-Geschwindigkeit: Vorwahl durch User
+*** Eingaben von Pfeiltasten
+*** graphische Schalter und Menüs
+
+* statisch (Einzelteile):
+** Spielfeld
+*** hat 2 Dimensionen (Höhe und Breite)
+*** besteht aus unsichtbaren Rechtecken
+**** ein Rechteck kann entweder leer oder belegt sein. Eine weitere
+     Unterscheidung nach der Art der Belegung (d.h. die Farbe) findet
+     bei Tetris nicht statt aber es gibt ähnliche Spiele wo es darauf
+     ankommt (Wiederverwendbarkeit!).
+
+** Spielstein
+*** hat 2 Dimensionen
+*** besteht aus Rechtecken
+**** sichtbar und verschiedenfarbig
+*** Arten von Steinen
+**** primaerer Unterschied: Form
+**** sekundaer Unterschied: Farbe
+
+** Spielstein-Atom
+*** es gibt mehrere Sorten die sich nur durch ihre Farbe unterscheiden
+*** Die Form ist rechteckig.  Die Groesse stimmt mit der Groesse der
+    Spielfeld-Atome überein.
+
+** Steuerung
+*** Tastatur und GUI
+*** Taktgeber
+
+** User-View
+*** GUI
+
+
+Local variables:
+mode: outline
+paragraph-separate: "[ 	]*$"
+end:
