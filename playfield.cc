@@ -36,9 +36,10 @@ Tetris_Play_Field::test_collision () const
     for (unsigned row=itsCurrStone->height (); row-- != 0;)
       if (itsCurrStone->test_pixel (row, col, itsAngle))
 	if (get_field (itsYPos + row + 1, itsXPos + col))
-	  return true;  // collision against bottom border or stone
+	  return true;  // collision against *bottom* border or stone
 	else
 	  break;
+
   return false;
 }
 
@@ -49,9 +50,8 @@ Tetris_Play_Field::test_overlap (Stone::Stone_Angle angle) const
     for (unsigned row=itsCurrStone->height (); row-- != 0;)
       if (itsCurrStone->test_pixel (row, col, angle))
 	if (get_field (itsYPos + row, itsXPos + col))
-	  return true;  // overlap with bottom border or stone
-	else
-	  break;
+	  return true;  // overlap (collision) with any border or stone
+
   return false;
 }
 
