@@ -28,8 +28,9 @@ public:
   enum { PREV_WIDTH = 25, PREV_HEIGHT = 25 };
   void update_preview (Stone &stone);
 
+  Widget create_play_widget (Widget parent);
+  Widget create_preview_widget (Widget parent);
 private:
-  bool open_window ();
   bool make_palette ();
   void destroy_palette ();
   void draw_curtain (bool defer = false);
@@ -43,9 +44,9 @@ private:
     { itsDamageMap[row * itsCols + col] = val; }
 
 private:
-  Display *dpy;
-  //  GC palette[N_COLORS];
-  int scr_nmb;
+  Display *dpy() const;
+  int scr_nmb() const;
+private:
   unsigned itsRows, itsCols;
   int width, height;
 

@@ -61,6 +61,20 @@ static my_color *my_palette[] = {
 #define BG_GC (my_palette[1][0].gc)
 #define FG_GC (my_palette[1][1].gc)
 
+
+
+inline Display *
+Xt_Play_Field_View::dpy() const
+{
+   return XtDisplay (itsPlayWid);
+   //return XtDisplay (itsTopWidget);
+}
+inline int
+Xt_Play_Field_View::scr_nmb() const
+{
+  return DefaultScreen (dpy ());
+}
+
 bool
 Xt_Play_Field_View::make_palette ()
 {
@@ -72,13 +86,13 @@ Xt_Play_Field_View::make_palette ()
       {
 	XColor xcol, exact_def_return;
 
-	if (!XLookupColor (dpy, DefaultColormap (dpy, scr_nmb),
+	if (!XLookupColor (dpy(), DefaultColormap (dpy(), scr_nmb()),
 			   my_palette[i][ii].color_name,
 			   &exact_def_return, &xcol))
 	  return false;
-	XAllocColor (dpy, DefaultColormap (dpy, scr_nmb), &xcol);
-	my_palette[i][ii].gc = XCreateGC (dpy, RootWindow (dpy, scr_nmb), 0, 0);
-	XSetForeground (dpy, my_palette[i][ii].gc, xcol.pixel);
+	XAllocColor (dpy(), DefaultColormap (dpy(), scr_nmb()), &xcol);
+	my_palette[i][ii].gc = XCreateGC (dpy(), RootWindow (dpy(), scr_nmb()), 0, 0);
+	XSetForeground (dpy(), my_palette[i][ii].gc, xcol.pixel);
 	my_pixels[my_nmb_pixels++] = xcol.pixel;
     }
   return true;
@@ -87,7 +101,7 @@ Xt_Play_Field_View::make_palette ()
 void
 Xt_Play_Field_View::destroy_palette ()
 {
-  XFreeColors (dpy, DefaultColormap (dpy, scr_nmb),
+  XFreeColors (dpy(), DefaultColormap (dpy(), scr_nmb()),
 	       my_pixels, my_nmb_pixels, 0); // ???-bw/25-Jan-99
   my_nmb_pixels = 0;
 }
@@ -102,10 +116,10 @@ Xt_Play_Field_View::draw_curtain (bool defer)
     {
       for (unsigned col=0; col < itsCols; ++col)
 	{
-	  XFillRectangle (dpy, XtWindow (itsPlayWid), BG_GC,
+	  XFillRectangle (dpy(), XtWindow (itsPlayWid), BG_GC,
 			  0, row * h,
 			  width, h);
-	  XFillRectangle (dpy, XtWindow (itsPlayWid), FG_GC,
+	  XFillRectangle (dpy(), XtWindow (itsPlayWid), FG_GC,
 			  0, (row+1) * h,
 			  width, 2);
 	  if (!defer)
@@ -119,29 +133,22 @@ Xt_Play_Field_View::draw_curtain (bool defer)
 void
 Xt_Play_Field_View::draw_flush ()
 {
-  XSync (dpy, False);
+  XSync (dpy(), False);
   //XFlush (dpy);
 }
 
 void
 Xt_Play_Field_View::draw_clear (bool defer)
 {
-  XFillRectangle (dpy, XtWindow (itsPlayWid), BG_GC, 0, 0, width, height);
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), BG_GC, 0, 0, width, height);
   if (!defer)
     draw_flush ();
 }
 
-bool
-Xt_Play_Field_View::open_window ()
-{
-  return false;
-}
-
-
 Xt_Play_Field_View::~Xt_Play_Field_View ()
 {
   XtUnmapWidget (itsTopWidget); // closes window quick
-  XSync (dpy, False);
+  XSync (dpy(), False);
   XtUnrealizeWidget (itsTopWidget);
   XtDestroyWidget (itsTopWidget); // ???-bw/19-Jan-99
   XtDestroyApplicationContext (itsAppContext);
@@ -164,13 +171,41 @@ CB_KeyPress (Widget widget, XtPointer closure, XEvent* event,
   continue_to_dispatch = False;
 }
 
+#if 0
+Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
+  : Play_Field_View (model)
+{
+
+}
+#endif
+
+Widget
+Xt_Play_Field_View::create_play_widget (Widget container)
+{
+
+  return itsPlayWid = XtVaCreateManagedWidget
+    ("viewport", formWidgetClass, container,
+     XtNheight, height,
+     XtNwidth, width,
+     0);
+}
+
+Widget
+Xt_Play_Field_View::create_preview_widget (Widget container)
+{
+  return itsPreview =  XtVaCreateManagedWidget
+    ("preview", simpleWidgetClass, container,
+     XtNheight, PREV_HEIGHT,
+     XtNwidth, PREV_WIDTH,
+     0);
+}
+
 
 
 Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
 					int *argc_ret,
 					char *argv[])
   : Play_Field_View (model)
-  , dpy (0), scr_nmb (0)
   , itsRows (model->get_height ())
   , itsCols (model->get_width ())
   , width (XPIX * itsCols + 1)
@@ -208,10 +243,10 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
 		     // XtNbackground, XtDefaultForeground,
 		     0);
   (void)MW ("prev_label", labelWidgetClass, pbox, XtNlabel, "Preview", NULL);
-  itsPreview = itsPlayWid = MW ("preview", simpleWidgetClass, pbox,
-				 XtNheight, PREV_HEIGHT,
-				 XtNwidth, PREV_WIDTH,
-				 0);
+  itsPreview =  MW ("preview", simpleWidgetClass, pbox,
+		    XtNheight, PREV_HEIGHT,
+		    XtNwidth, PREV_WIDTH,
+		    0);
   // top.???.speed
 
   Widget sbox =  MW ("sbox", boxWidgetClass, cbox,
@@ -259,8 +294,6 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
   //XtAddEventHandler (itsPlayWid, KeyPressMask, False, CB_KeyPress, 0);
 
   XtRealizeWidget (itsTopWidget);
-  dpy = XtDisplay (itsTopWidget);
-  scr_nmb = DefaultScreen (dpy);
 
   // We want the input-focus to use keyboard (We must do this ourself
   // because we don't use a widget needing keyboard) -bw/20-Jan-99
@@ -268,16 +301,16 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
     {
       hints->flags = InputHint;
       hints->input = True;
-      XSetWMHints (dpy, XtWindow (itsTopWidget), hints);
+      XSetWMHints (dpy(), XtWindow (itsTopWidget), hints);
       XFree (hints);
     }
   {
     XSetWindowAttributes wa;
     wa.event_mask = (ExposureMask | KeyPressMask | KeyReleaseMask);
-    XChangeWindowAttributes (dpy, XtWindow (itsTopWidget), CWEventMask, &wa);
+    XChangeWindowAttributes (dpy(), XtWindow (itsTopWidget), CWEventMask, &wa);
     wa.event_mask = (ExposureMask);
-    XChangeWindowAttributes (dpy, XtWindow (itsPlayWid), CWEventMask, &wa);
-    XChangeWindowAttributes (dpy, XtWindow (itsPreview), CWEventMask, &wa);
+    XChangeWindowAttributes (dpy(), XtWindow (itsPlayWid), CWEventMask, &wa);
+    XChangeWindowAttributes (dpy(), XtWindow (itsPreview), CWEventMask, &wa);
   }
 
   if (!make_palette ()) throw;
@@ -292,8 +325,8 @@ Xt_Play_Field_View::draw_pixel (unsigned row, unsigned column, GC color,
   const int h = height / itsRows;
   const int w = width / itsCols;
 
-  XFillRectangle (dpy, XtWindow (itsPlayWid), color, column * w, row * h, w, h);
-  XDrawRectangle (dpy, XtWindow (itsPlayWid), FG_GC, column * w, row * h, w, h);
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), color, column * w, row * h, w, h);
+  XDrawRectangle (dpy(), XtWindow (itsPlayWid), FG_GC, column * w, row * h, w, h);
   if (!defer)
     draw_flush ();
 }
@@ -361,8 +394,8 @@ Xt_Play_Field_View::update_preview (Stone &stone)
 	const int h = PREV_HEIGHT / 4;
 	const int w = PREV_WIDTH / 4;
 
-	XFillRectangle (dpy, XtWindow (itsPreview), color, col * w, row * h, w, h);
-	XDrawRectangle (dpy, XtWindow (itsPreview), FG_GC, col * w, row * h, w, h);
+	XFillRectangle (dpy(), XtWindow (itsPreview), color, col * w, row * h, w, h);
+	XDrawRectangle (dpy(), XtWindow (itsPreview), FG_GC, col * w, row * h, w, h);
       }
   draw_flush ();
 }
