@@ -10,10 +10,10 @@ class Xt_Play_Field_View;
 
 class Xt_Play_Field_View : public Play_Field_View
 {
-  friend class Xt_Play_Field_Control;
+  //  friend class Xt_Play_Field_Control;
 public:
   virtual ~Xt_Play_Field_View ();
-  Xt_Play_Field_View (Play_Field *model, int *argc_ret, char *argv[]);
+  Xt_Play_Field_View (Play_Field *model);
 
   // (optimized) window refreshing called when model has changed.
   virtual void update ();
@@ -26,10 +26,17 @@ public:
 
   // display next stone in itsPreview widget
   enum { PREV_WIDTH = 25, PREV_HEIGHT = 25 };
-  void update_preview (Stone &stone);
+  void update_preview ();
 
+  // interface to control object
+public:
+  void set_preview_stone (Stone &stone) { itsNextStone = &stone; }
   Widget create_play_widget (Widget parent);
   Widget create_preview_widget (Widget parent);
+  bool init_after_realize_widgets ();
+  void expose_play_widget (XExposeEvent &e);
+  void expose_preview_widget (XExposeEvent &e);
+
 private:
   bool make_palette ();
   void destroy_palette ();
@@ -54,20 +61,19 @@ private:
      refreshing */
   Stone_Atom *itsDamageMap;
 
-  /* *** Controller section (FIXME) ***  */
-  XtAppContext itsAppContext;
-  /* control widgets */
-  Widget itsTopWidget, itsButtonStart, itsButtonPause, itsScrollerSpeed;
   /* output window widgets */
   Widget itsPlayWid, itsPreview;
+  Stone *itsNextStone;
 };
 
 
 class Xt_Play_Field_Control : public Play_Field_Control
 {
 public:
-  Xt_Play_Field_Control (Xt_Play_Field_View &view, Stone *stones[]);
-
+  virtual ~Xt_Play_Field_Control ();
+  Xt_Play_Field_Control (Play_Field &model, Xt_Play_Field_View &view,
+			 Stone *stones[],
+			 int *argc_ret, char *argv[]);
   void process_events (bool block);
 private:
   enum {TI_NORMAL = 500, TI_FAST = 100, TI_SLOW = 700, TI_FALL = 10};
@@ -77,7 +83,12 @@ private:
   static void CB_speed_scroll (Widget w, XtPointer a, XtPointer b);
   static void CB_speed_jump (Widget w, XtPointer a, XtPointer b);
   static void CB_timeout (XtPointer obj, XtIntervalId *id);
+
 private:
+  Display *dpy() const;
+  int scr_nmb() const;
+private:
+  Play_Field &itsModel;
   Xt_Play_Field_View &itsView;
   XtIntervalId itsTimer;
   bool isRunning, isPaused, isTimerRunning;
@@ -85,6 +96,13 @@ private:
   Stone **stone_set;
   unsigned nmb_stones;
   unsigned itsNextStone;
+private:
+  /* *** Controller section (FIXME) ***  */
+  XtAppContext itsAppContext;
+  /* control widgets */
+  Widget itsTopWidget, itsButtonStart, itsButtonPause, itsScrollerSpeed;
+  /* output window widgets */
+  Widget itsPlayWid, itsPreview;
 };
 
 #endif

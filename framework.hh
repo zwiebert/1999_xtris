@@ -63,6 +63,7 @@ protected:
 class Play_Field_Control
 {
 public:
+  virtual ~Play_Field_Control () {};
   virtual void process_events (bool block)=0;
 };
 

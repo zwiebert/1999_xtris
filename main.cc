@@ -7,11 +7,11 @@
 
 struct Tetris
 {
-  Tetris (int *argc_ret, char *argv[], Stone *stones[]):
-    field (10, 25),
-    view (&field, argc_ret, argv),
-    ctrl (view, stones),
-    nmb_stones (0)
+  Tetris (int *argc_ret, char *argv[], Stone *stones[])
+    : field (10, 25)
+    , view (&field)
+    , ctrl (field, view, stones, argc_ret, argv)
+    , nmb_stones (0)
     {
       while (stones[nmb_stones])
 	++nmb_stones;
