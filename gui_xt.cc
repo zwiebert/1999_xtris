@@ -98,6 +98,17 @@ Xt_Play_Field_View::make_palette ()
   return true;
 }
 
+bool
+Xt_Play_Field_View::init_after_realize_widgets ()
+{
+  if (make_palette ())
+    {
+      draw_clear ();
+      return true;
+    }
+  return false;
+}
+
 void
 Xt_Play_Field_View::destroy_palette ()
 {
@@ -147,11 +158,7 @@ Xt_Play_Field_View::draw_clear (bool defer)
 
 Xt_Play_Field_View::~Xt_Play_Field_View ()
 {
-  XtUnmapWidget (itsTopWidget); // closes window quick
-  XSync (dpy(), False);
-  XtUnrealizeWidget (itsTopWidget);
-  XtDestroyWidget (itsTopWidget); // ???-bw/19-Jan-99
-  XtDestroyApplicationContext (itsAppContext);
+  destroy_palette ();
 }
 
 
@@ -202,9 +209,7 @@ Xt_Play_Field_View::create_preview_widget (Widget container)
 
 
 
-Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
-					int *argc_ret,
-					char *argv[])
+Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
   : Play_Field_View (model)
   , itsRows (model->get_height ())
   , itsCols (model->get_width ())
@@ -212,110 +217,14 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model,
   , height (YPIX * itsRows + 1)
   , itsDamageMap (new Stone_Atom [itsRows * itsCols])
 {
-#define MW XtVaCreateManagedWidget
-
   //bzero (palette, sizeof palette);
   for (unsigned i=0; i < itsRows * itsCols; ++i)
     itsDamageMap[i] = SA_BORDER; // force refresh
 
 #if 0
-  itsTopWidget = XtVaAppInitialize (&itsAppContext, "Tetris", NULL, 0,
-				    argc_ret, argv, NULL, NULL);
-#else
-  itsTopWidget = XtVaOpenApplication (&itsAppContext, "Tetris", NULL, 0,
-				      argc_ret, argv, NULL,
-				      applicationShellWidgetClass,
-				      // XtNminWidth, 200,
-				      NULL);
-#endif
-  // top.box
-   Widget box =  MW ("box", boxWidgetClass, itsTopWidget,
-		     XtNorientation, XtorientHorizontal,
-		     0);
-
-  // top.box.cbox
-  Widget cbox =  MW ("cbox", boxWidgetClass, box,
-					  XtNorientation, XtorientVertical,
-					  0);
-  // top.box.cbox.preview
-  Widget pbox =  MW ("pbox", boxWidgetClass, cbox,
-		     XtNorientation, XtorientVertical,
-		     // XtNbackground, XtDefaultForeground,
-		     0);
-  (void)MW ("prev_label", labelWidgetClass, pbox, XtNlabel, "Preview", NULL);
-  itsPreview =  MW ("preview", simpleWidgetClass, pbox,
-		    XtNheight, PREV_HEIGHT,
-		    XtNwidth, PREV_WIDTH,
-		    0);
-  // top.???.speed
-
-  Widget sbox =  MW ("sbox", boxWidgetClass, cbox,
-		     XtNorientation, XtorientVertical,
-		     // XtNborder , XtDefaultBackground, // invisible
-		     // XtNbackground, XtDefaultForeground,
-		     0);
-  // FIXME-bw/21-Jan-99: A scroller may not usable to choose a
-  // discrete difficulty (needed at least by hiscore lists)
-  // NOTE-bw/21-Jan-99: A hiscore list is not important (but boring)!
-  /*Widget speed_label =*/ MW ("speed_label", labelWidgetClass, sbox, XtNlabel, "Speed", NULL);
-  itsScrollerSpeed = MW ("speed", scrollbarWidgetClass, sbox,
-			 XtNwidth, 10,
-			 XtNheight, 80,
-			 //XtNfromHoriz, speed_label,
-			 NULL);
-  //(void)MW ("speed_label2", labelWidgetClass, bbox, XtNlabel, "Fast", NULL);
-
-
-  Widget bbox =  MW ("bbox", boxWidgetClass, cbox,
-		     XtNorientation, XtorientVertical,
-		     0);
-  // top.box.bbox.button
-  Widget button = MW ("Quit", commandWidgetClass, bbox, NULL);
-  XtAddCallback(button, XtNcallback, Stop, NULL);
-  // top.box.bbox.button2
-  itsButtonStart = MW ("Start", commandWidgetClass, bbox, NULL);
-  // top.box.bbox.button3
-  itsButtonPause = MW ("Pause", toggleWidgetClass, bbox, NULL);
-
-
-#if 0
-  // top.viewport
-  itsPlayWid = MW ("viewport", simpleWidgetClass, box,
-					 XtNheight, height,
-					 XtNwidth, width,
-					 0);
-#else
-  // top.viewport
-  itsPlayWid = MW ("viewport", formWidgetClass, box,
-					 XtNheight, height,
-					 XtNwidth, width,
-					 0);
-#endif
-  //XtAddEventHandler (itsPlayWid, KeyPressMask, False, CB_KeyPress, 0);
-
-  XtRealizeWidget (itsTopWidget);
-
-  // We want the input-focus to use keyboard (We must do this ourself
-  // because we don't use a widget needing keyboard) -bw/20-Jan-99
-  if (XWMHints *hints = XAllocWMHints())
-    {
-      hints->flags = InputHint;
-      hints->input = True;
-      XSetWMHints (dpy(), XtWindow (itsTopWidget), hints);
-      XFree (hints);
-    }
-  {
-    XSetWindowAttributes wa;
-    wa.event_mask = (ExposureMask | KeyPressMask | KeyReleaseMask);
-    XChangeWindowAttributes (dpy(), XtWindow (itsTopWidget), CWEventMask, &wa);
-    wa.event_mask = (ExposureMask);
-    XChangeWindowAttributes (dpy(), XtWindow (itsPlayWid), CWEventMask, &wa);
-    XChangeWindowAttributes (dpy(), XtWindow (itsPreview), CWEventMask, &wa);
-  }
-
   if (!make_palette ()) throw;
   draw_clear ();
-#undef MW
+#endif
 }
 
 void
@@ -383,13 +292,13 @@ Xt_Play_Field_View::update ()
 }
 
 void
-Xt_Play_Field_View::update_preview (Stone &stone)
+Xt_Play_Field_View::update_preview ()
 {
   for (unsigned row=0; row < 4; ++row)
     for (unsigned col=0; col < 4; ++col)
       {
-	GC color = (stone.test_pixel (row, col, Stone::SAL_NORMAL)
-			  ? SA_TO_GC (stone.get_atom ())
+	GC color = (itsNextStone->test_pixel (row, col, Stone::SAL_NORMAL)
+			  ? SA_TO_GC (itsNextStone->get_atom ())
 			  : SA_TO_GC (SA_0));
 	const int h = PREV_HEIGHT / 4;
 	const int w = PREV_WIDTH / 4;
@@ -400,8 +309,33 @@ Xt_Play_Field_View::update_preview (Stone &stone)
   draw_flush ();
 }
 
+void
+Xt_Play_Field_View::expose_play_widget (XExposeEvent &e)
+{
+  dump_pixel_rectangle (e.x, e.y, e.width, e.height);
+}
+
+void
+Xt_Play_Field_View::expose_preview_widget (XExposeEvent &e)
+{
+  if (!e.count)
+    update_preview ();
+}
+
+
 
 #include <X11/keysym.h>
+
+inline Display *
+Xt_Play_Field_Control::dpy() const
+{
+  return XtDisplay (itsTopWidget);
+}
+inline int
+Xt_Play_Field_Control::scr_nmb() const
+{
+  return DefaultScreen (dpy ());
+}
 
 void
 Xt_Play_Field_Control::CB_speed_scroll (Widget w, XtPointer a, XtPointer b)
@@ -440,7 +374,7 @@ Xt_Play_Field_Control::CB_toggle_pause (Widget w, XtPointer a, XtPointer b)
     {
       if (!obj->isTimerRunning)
 
-	{	obj->itsTimer = XtAppAddTimeOut (obj->itsView.itsAppContext,
+	{	obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
 						 obj->itsTimerInterval,
 						 CB_timeout, (XtPointer)obj);
 	obj->isTimerRunning = true;
@@ -459,7 +393,7 @@ Xt_Play_Field_Control::CB_start (Widget w, XtPointer a, XtPointer b)
 
   if (!obj->isPaused && !obj->isTimerRunning)
     {
-      obj->itsTimer = XtAppAddTimeOut (obj->itsView.itsAppContext,
+      obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
 				       obj->itsTimerInterval,
 				       CB_timeout, (XtPointer)obj);
       obj->isTimerRunning = true;
@@ -469,7 +403,7 @@ Xt_Play_Field_Control::CB_start (Widget w, XtPointer a, XtPointer b)
 void
 Xt_Play_Field_Control::CB_timeout (XtPointer a, XtIntervalId *id)
 {
-#define field (*obj->itsView.itsModel)
+#define field (obj->itsModel)
   Xt_Play_Field_Control *obj = (Xt_Play_Field_Control *) a;
   bool display_changed=false;
   bool stop = false;
@@ -493,7 +427,8 @@ Xt_Play_Field_Control::CB_timeout (XtPointer a, XtIntervalId *id)
       field.set_current_stone (stone);
 
       obj->itsNextStone = random () % obj->nmb_stones;
-      obj->itsView.update_preview (*obj->stone_set[obj->itsNextStone]);
+      obj->itsView.set_preview_stone (*obj->stone_set[obj->itsNextStone]);
+      obj->itsView.update_preview ();
 
       if  (field.test_collision ())
 	stop = true;
@@ -508,7 +443,7 @@ Xt_Play_Field_Control::CB_timeout (XtPointer a, XtIntervalId *id)
   if (stop)
     obj->isTimerRunning = false;
   else
-    obj->itsTimer = XtAppAddTimeOut (obj->itsView.itsAppContext,
+    obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
 				     obj->itsTimerInterval,
 				     (XtTimerCallbackProc) CB_timeout,
 				     (XtPointer)obj);
@@ -526,27 +461,27 @@ Xt_Play_Field_Control::process_events (bool block)
       if (block)
 	{
 	}
-      else if (! XtAppPending (itsView.itsAppContext))
+      else if (! XtAppPending (itsAppContext))
 	break;
 
       XEvent e;
-      XtAppNextEvent (itsView.itsAppContext, &e);
+      XtAppNextEvent (itsAppContext, &e);
       switch(e.type)
 	{
 	case KeyPress:
 	  switch (e.xkey.keycode)
 	    {
 	    case 100: //XK_Left:
-	      itsView.itsModel->move_stone (DIR_WEST);
-	      itsView.itsModel->notify_views ();
+	      itsModel.move_stone (DIR_WEST);
+	      itsModel.notify_views ();
 	      goto parent;
 	    case 102: //XK_Right:
-	      itsView.itsModel->move_stone (DIR_EAST);
-	      itsView.itsModel->notify_views ();
+	      itsModel.move_stone (DIR_EAST);
+	      itsModel.notify_views ();
 	      goto parent;
 	    case 98: // XK_Up:
-	      itsView.itsModel->rotate_stone_90_cw ();
-	      itsView.itsModel->notify_views ();
+	      itsModel.rotate_stone_90_cw ();
+	      itsModel.notify_views ();
 	      goto parent;
 	    case 104: // XK_Down:
 	      if (isTimerRunning)
@@ -580,17 +515,12 @@ Xt_Play_Field_Control::process_events (bool block)
 	      break;
 
 	case Expose:
-	  if (e.xexpose.window == XtWindow (itsView.itsPlayWid))
-	    {
-	      itsView.dump_pixel_rectangle (e.xexpose.x, e.xexpose.y,
-					    e.xexpose.width, e.xexpose.height);
-	      //itsView.dump_rectangle (0, 0, itsView.itsCols, itsView.itsRows);
-	    }
-	  else if (e.xexpose.count)
-	    goto parent;
-	  if (e.xexpose.window == XtWindow (itsView.itsPreview))
-	    itsView.update_preview (*stone_set[itsNextStone]);
-	  // TODO-bw/18-Jan-99
+	  if (e.xexpose.window == XtWindow (itsPlayWid))
+	    itsView.expose_play_widget (e.xexpose);
+
+	  if (e.xexpose.window == XtWindow (itsPreview))
+	    itsView.expose_preview_widget (e.xexpose);
+	  
 	  goto parent;
 
 
@@ -604,10 +534,21 @@ Xt_Play_Field_Control::process_events (bool block)
     XtRemoveTimeOut (itsTimer);
 }
 
+Xt_Play_Field_Control::~Xt_Play_Field_Control ()
+{
+  XtUnmapWidget (itsTopWidget); // closes window quick
+  XSync (dpy(), False);
+  XtUnrealizeWidget (itsTopWidget);
+  XtDestroyWidget (itsTopWidget); // ???-bw/19-Jan-99
+  XtDestroyApplicationContext (itsAppContext);
+}
 
-Xt_Play_Field_Control::Xt_Play_Field_Control (Xt_Play_Field_View &view,
-					      Stone *stones[])
-  : itsView (view)
+
+Xt_Play_Field_Control::Xt_Play_Field_Control (Play_Field &model,
+					      Xt_Play_Field_View &view,
+					      Stone *stones[],
+					      int *argc_ret, char *argv[])
+  : itsModel (model), itsView (view)
   , isRunning (false), isPaused (false), isTimerRunning (false)
   , itsTimerIntervalDefault (TI_NORMAL)
   , itsTimerInterval (itsTimerIntervalDefault)
@@ -620,15 +561,101 @@ Xt_Play_Field_Control::Xt_Play_Field_Control (Xt_Play_Field_View &view,
   for (unsigned i=0; i < nmb_stones; ++i)
     stone_set[i] = stones[i];
   itsNextStone = random () % nmb_stones;
+  itsView.set_preview_stone (*stone_set[itsNextStone]);
 
-  XtAddCallback (itsView.itsButtonStart, XtNcallback, CB_start,
+  // build widget tree
+  {
+#define MW XtVaCreateManagedWidget
+
+    itsTopWidget = XtVaOpenApplication (&itsAppContext, "Tetris", NULL, 0,
+					argc_ret, argv, NULL,
+					applicationShellWidgetClass,
+					// XtNminWidth, 200,
+					NULL);
+
+    // top.box
+    Widget box = MW ("box", boxWidgetClass, itsTopWidget,
+		     XtNorientation, XtorientHorizontal,
+		     0);
+
+    // top.box.cbox
+    Widget cbox = MW ("cbox", boxWidgetClass, box,
+		      XtNorientation, XtorientVertical,
+		      0);
+    // top.box.cbox.preview
+    Widget pbox = MW ("pbox", boxWidgetClass, cbox,
+		      XtNorientation, XtorientVertical,
+		      // XtNbackground, XtDefaultForeground,
+		      0);
+    (void)MW ("prev_label", labelWidgetClass, pbox, XtNlabel, "Preview", NULL);
+    itsPreview = itsView.create_preview_widget (pbox);
+
+    // top.???.speed
+
+    Widget sbox = MW ("sbox", boxWidgetClass, cbox,
+		      XtNorientation, XtorientVertical,
+		      // XtNborder , XtDefaultBackground, // invisible
+		      // XtNbackground, XtDefaultForeground,
+		      0);
+    // FIXME-bw/21-Jan-99: A scroller may not usable to choose a
+    // discrete difficulty (needed at least by hiscore lists)
+    // NOTE-bw/21-Jan-99: A hiscore list is not important (but boring)!
+    /*Widget speed_label =*/ MW ("speed_label", labelWidgetClass, sbox, XtNlabel, "Speed", NULL);
+    itsScrollerSpeed = MW ("speed", scrollbarWidgetClass, sbox,
+			   XtNwidth, 10,
+			   XtNheight, 80,
+			   //XtNfromHoriz, speed_label,
+			   NULL);
+    //(void)MW ("speed_label2", labelWidgetClass, bbox, XtNlabel, "Fast", NULL);
+
+
+    Widget bbox =  MW ("bbox", boxWidgetClass, cbox,
+		       XtNorientation, XtorientVertical,
+		       0);
+    // top.box.bbox.button
+    Widget button = MW ("Quit", commandWidgetClass, bbox, NULL);
+    XtAddCallback(button, XtNcallback, Stop, NULL);
+    // top.box.bbox.button2
+    itsButtonStart = MW ("Start", commandWidgetClass, bbox, NULL);
+    // top.box.bbox.button3
+    itsButtonPause = MW ("Pause", toggleWidgetClass, bbox, NULL);
+
+
+    // top.viewport
+    itsPlayWid = itsView.create_play_widget (box);
+
+#undef MW
+  }
+
+  XtRealizeWidget (itsTopWidget);
+
+  // We want the input-focus to use keyboard (We must do this ourself
+  // because we don't use a widget needing keyboard) -bw/20-Jan-99
+  if (XWMHints *hints = XAllocWMHints())
+    {
+      hints->flags = InputHint;
+      hints->input = True;
+      XSetWMHints (dpy(), XtWindow (itsTopWidget), hints);
+      XFree (hints);
+    }
+  {
+    XSetWindowAttributes wa;
+    wa.event_mask = (ExposureMask | KeyPressMask | KeyReleaseMask);
+    XChangeWindowAttributes (dpy(), XtWindow (itsTopWidget), CWEventMask, &wa);
+    wa.event_mask = (ExposureMask);
+    XChangeWindowAttributes (dpy(), XtWindow (itsPlayWid), CWEventMask, &wa);
+    XChangeWindowAttributes (dpy(), XtWindow (itsPreview), CWEventMask, &wa);
+  }
+
+  if (!itsView.init_after_realize_widgets ()) throw;
+
+  // callbacks
+  XtAddCallback (itsButtonStart, XtNcallback, CB_start,
 		 (XtPointer) this);
-
-  //printf ("client_data %p\n", (XtPointer) this);
-  XtAddCallback (itsView.itsButtonPause, XtNcallback,
+  XtAddCallback (itsButtonPause, XtNcallback,
 		 CB_toggle_pause, (XtPointer) this);
-  XtAddCallback (itsView.itsScrollerSpeed, XtNjumpProc, CB_speed_jump, (XtPointer)this);
-  //  XtAddCallback (itsView.itsScrollerSpeed, XtNscrollProc, CB_speed_scroll, (XtPointer)this);
+  XtAddCallback (itsScrollerSpeed, XtNjumpProc, CB_speed_jump, (XtPointer)this);
+  //  XtAddCallback (itsScrollerSpeed, XtNscrollProc, CB_speed_scroll, (XtPointer)this);
 }
 
 
