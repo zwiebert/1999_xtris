@@ -32,8 +32,7 @@ int
 Tetris::play ()
 {
   srandom ((unsigned) time (0));
-  unsigned i = random () % nmb_stones;
-  Stone &stone = *stone_set[i];
+  Stone &stone = *stone_set[random () % nmb_stones];
   field.set_current_stone (stone);
   field.notify_views ();
   ctrl.process_events (true);

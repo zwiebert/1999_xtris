@@ -174,7 +174,6 @@ void
 CB_KeyPress (Widget widget, XtPointer closure, XEvent* event,
 	     Boolean *continue_to_dispatch)
 {
-  //printf ("key press event\n");
   continue_to_dispatch = False;
 }
 
@@ -216,6 +215,7 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
   , width (XPIX * itsCols + 1)
   , height (YPIX * itsRows + 1)
   , itsDamageMap (new Stone_Atom [itsRows * itsCols])
+  , itsPlayWid (0), itsPreview (0), itsNextStone (0)
 {
   //bzero (palette, sizeof palette);
   for (unsigned i=0; i < itsRows * itsCols; ++i)
@@ -234,15 +234,18 @@ Xt_Play_Field_View::draw_pixel (unsigned row, unsigned column, GC color,
   const int h = height / itsRows;
   const int w = width / itsCols;
 
-  XFillRectangle (dpy(), XtWindow (itsPlayWid), color, column * w, row * h, w, h);
-  XDrawRectangle (dpy(), XtWindow (itsPlayWid), FG_GC, column * w, row * h, w, h);
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), color,
+		  column * w, row * h, w, h);
+  XDrawRectangle (dpy(), XtWindow (itsPlayWid), FG_GC,
+		  column * w, row * h, w, h);
   if (!defer)
     draw_flush ();
 }
 
 void
 Xt_Play_Field_View::dump_pixel_rectangle (unsigned pix_x, unsigned pix_y,
-					  unsigned pix_width, unsigned pix_height)
+					  unsigned pix_width,
+					  unsigned pix_height)
 {
   Play_Field *pf = itsModel;
   if (!pf)
@@ -303,8 +306,10 @@ Xt_Play_Field_View::update_preview ()
 	const int h = PREV_HEIGHT / 4;
 	const int w = PREV_WIDTH / 4;
 
-	XFillRectangle (dpy(), XtWindow (itsPreview), color, col * w, row * h, w, h);
-	XDrawRectangle (dpy(), XtWindow (itsPreview), FG_GC, col * w, row * h, w, h);
+	XFillRectangle (dpy(), XtWindow (itsPreview), color,
+			col * w, row * h, w, h);
+	XDrawRectangle (dpy(), XtWindow (itsPreview), FG_GC,
+			col * w, row * h, w, h);
       }
   draw_flush ();
 }
@@ -344,112 +349,129 @@ Xt_Play_Field_Control::CB_speed_scroll (Widget w, XtPointer a, XtPointer b)
 }
 
 void
-Xt_Play_Field_Control::CB_speed_jump (Widget w, XtPointer a, XtPointer call_data)
+Xt_Play_Field_Control::cb_speed_jump (const float &pos)
 {
-  Xt_Play_Field_Control *obj = (Xt_Play_Field_Control *) a;
-  obj->itsTimerIntervalDefault 
-    = obj->itsTimerInterval 
-    = (long)TI_SLOW - (long)(((long)TI_SLOW - (long)TI_FAST) * (*(float*)call_data));
+  itsTimerIntervalDefault
+    = itsTimerInterval 
+    = (long)TI_SLOW - (long)(((long)TI_SLOW - (long)TI_FAST) * pos);
+}
+
+void
+Xt_Play_Field_Control::CB_speed_jump (Widget w, XtPointer a, XtPointer b)
+{
+  ((self *) a)->cb_speed_jump (*(float*)b);
+}
+
+void
+Xt_Play_Field_Control::cb_toggle_pause ()
+{
+  isPaused = !isPaused;
+
+  if (!isRunning)
+    return;
+
+  if (isPaused)
+    {
+      if (isTimerRunning)
+	{
+	  XtRemoveTimeOut (itsTimer);
+	  isTimerRunning = false;
+	}
+    }
+  else
+    {
+      if (!isTimerRunning)
+
+	{	itsTimer = XtAppAddTimeOut (itsAppContext,
+					    itsTimerInterval,
+					    CB_timeout, (XtPointer)this);
+	isTimerRunning = true;
+	}
+    }
 }
 
 void
 Xt_Play_Field_Control::CB_toggle_pause (Widget w, XtPointer a, XtPointer b)
 {
-  Xt_Play_Field_Control *obj = (Xt_Play_Field_Control *) a;
+  ((self *) a)->cb_toggle_pause ();
+}
 
-  obj->isPaused = !obj->isPaused;
 
-  if (!obj->isRunning)
+void
+Xt_Play_Field_Control::cb_start ()
+{
+  if (isRunning)
     return;
+  isRunning = true;
 
-  if (obj->isPaused)
+  if (!isPaused && !isTimerRunning)
     {
-      if (obj->isTimerRunning)
-	{
-	  XtRemoveTimeOut (obj->itsTimer);
-	  obj->isTimerRunning = false;
-	}
-    }
-  else
-    {
-      if (!obj->isTimerRunning)
-
-	{	obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
-						 obj->itsTimerInterval,
-						 CB_timeout, (XtPointer)obj);
-	obj->isTimerRunning = true;
-	}
+      itsTimer = XtAppAddTimeOut (itsAppContext,
+				  itsTimerInterval,
+				  CB_timeout, (XtPointer)this);
+      isTimerRunning = true;
     }
 }
 
 void
 Xt_Play_Field_Control::CB_start (Widget w, XtPointer a, XtPointer b)
 {
-  Xt_Play_Field_Control *obj = (Xt_Play_Field_Control *) a;
-
-  if (obj->isRunning)
-    return;
-  obj->isRunning = true;
-
-  if (!obj->isPaused && !obj->isTimerRunning)
-    {
-      obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
-				       obj->itsTimerInterval,
-				       CB_timeout, (XtPointer)obj);
-      obj->isTimerRunning = true;
-    }
+  ((self *) a)->cb_start ();
 }
 
 void
-Xt_Play_Field_Control::CB_timeout (XtPointer a, XtIntervalId *id)
+Xt_Play_Field_Control::cb_timeout ()
 {
-#define field (obj->itsModel)
-  Xt_Play_Field_Control *obj = (Xt_Play_Field_Control *) a;
   bool display_changed=false;
   bool stop = false;
 
-  if  (field.test_collision ())
+  if  (itsModel.test_collision ())
     {
       // remove full rows
-      for (unsigned row=0; row < field.get_height (); ++row)
+      for (unsigned row=0; row < itsModel.get_height (); ++row)
 	{
-	  for (unsigned col=0; col < field.get_width (); ++col)
-	    if (!field.get_field (row, col))
+	  for (unsigned col=0; col < itsModel.get_width (); ++col)
+	    if (!itsModel.get_field (row, col))
 	      goto next_row;
-	  field.remove_row (row);
+	  itsModel.remove_row (row);
 	  display_changed = true;
 	next_row:;
 	}
 
       // make new current stone
-      Stone &stone = *obj->stone_set[obj->itsNextStone];
+      Stone &stone = *stone_set[itsNextStone];
       display_changed = true;
-      field.set_current_stone (stone);
+      itsModel.set_current_stone (stone);
 
-      obj->itsNextStone = random () % obj->nmb_stones;
-      obj->itsView.set_preview_stone (*obj->stone_set[obj->itsNextStone]);
-      obj->itsView.update_preview ();
+      itsNextStone = random () % nmb_stones;
+      itsView.set_preview_stone (*stone_set[itsNextStone]);
+      itsView.update_preview ();
 
-      if  (field.test_collision ())
+      if  (itsModel.test_collision ())
 	stop = true;
-      obj->itsTimerInterval = obj->itsTimerIntervalDefault;
+      itsTimerInterval = itsTimerIntervalDefault;
     }
   else
     {
-      if (field.move_stone (DIR_SOUTH))
+      if (itsModel.move_stone (DIR_SOUTH))
 	display_changed = true;
     }
 
   if (stop)
-    obj->isTimerRunning = false;
+    isTimerRunning = false;
   else
-    obj->itsTimer = XtAppAddTimeOut (obj->itsAppContext,
-				     obj->itsTimerInterval,
-				     (XtTimerCallbackProc) CB_timeout,
-				     (XtPointer)obj);
+    itsTimer = XtAppAddTimeOut (itsAppContext,
+				itsTimerInterval,
+				(XtTimerCallbackProc) CB_timeout,
+				(XtPointer)this);
   if (display_changed)
-    field.notify_views ();
-#undef field
+    itsModel.notify_views ();
+}
+
+void
+Xt_Play_Field_Control::CB_timeout (XtPointer a, XtIntervalId *id)
+{
+  ((self *) a)->cb_timeout ();
 }
 
 void
@@ -458,15 +480,12 @@ Xt_Play_Field_Control::process_events (bool block)
 
   while (1)
     {
-      if (block)
-	{
-	}
-      else if (! XtAppPending (itsAppContext))
+      if (!block && !XtAppPending (itsAppContext))
 	break;
 
       XEvent e;
       XtAppNextEvent (itsAppContext, &e);
-      switch(e.type)
+      switch (e.type)
 	{
 	case KeyPress:
 	  switch (e.xkey.keycode)
@@ -492,7 +511,6 @@ Xt_Play_Field_Control::process_events (bool block)
 		}
 	      goto parent;
 	    default:
-//	      fprintf (stderr, "keypress: %d\n", e.xkey.keycode);
 	      goto parent;
 	    }
 	  break;
@@ -509,7 +527,6 @@ Xt_Play_Field_Control::process_events (bool block)
 		    }
 		  goto parent;
 		default:
-		  //fprintf (stderr, "keypress: %d\n", e.xkey.keycode);
 		  goto parent;
 		}
 	      break;
@@ -526,7 +543,6 @@ Xt_Play_Field_Control::process_events (bool block)
 
 	default:
 	parent:
-	  //	  printf ("event\n");
 	  XtDispatchEvent (&e);
 	}
     } 
@@ -657,7 +673,4 @@ Xt_Play_Field_Control::Xt_Play_Field_Control (Play_Field &model,
   XtAddCallback (itsScrollerSpeed, XtNjumpProc, CB_speed_jump, (XtPointer)this);
   //  XtAddCallback (itsScrollerSpeed, XtNscrollProc, CB_speed_scroll, (XtPointer)this);
 }
-
-
-
 

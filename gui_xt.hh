@@ -10,11 +10,24 @@ class Xt_Play_Field_View;
 
 class Xt_Play_Field_View : public Play_Field_View
 {
-  //  friend class Xt_Play_Field_Control;
 public:
   virtual ~Xt_Play_Field_View ();
   Xt_Play_Field_View (Play_Field *model);
 
+
+public: // interface to control object
+  bool init_after_realize_widgets ();  // late init
+
+  Widget create_play_widget (Widget parent);
+  void expose_play_widget (XExposeEvent &e);
+
+  void set_preview_stone (Stone &stone) { itsNextStone = &stone; }
+  Widget create_preview_widget (Widget parent);
+  void expose_preview_widget (XExposeEvent &e);
+  void update_preview ();
+
+private:
+  //** Play widget
   // (optimized) window refreshing called when model has changed.
   virtual void update ();
 
@@ -24,18 +37,8 @@ public:
   void dump_pixel_rectangle (unsigned pix_x, unsigned pix_y,
 			     unsigned pix_width, unsigned pix_height);
 
-  // display next stone in itsPreview widget
+  //**Preview widget
   enum { PREV_WIDTH = 25, PREV_HEIGHT = 25 };
-  void update_preview ();
-
-  // interface to control object
-public:
-  void set_preview_stone (Stone &stone) { itsNextStone = &stone; }
-  Widget create_play_widget (Widget parent);
-  Widget create_preview_widget (Widget parent);
-  bool init_after_realize_widgets ();
-  void expose_play_widget (XExposeEvent &e);
-  void expose_preview_widget (XExposeEvent &e);
 
 private:
   bool make_palette ();
@@ -69,6 +72,7 @@ private:
 
 class Xt_Play_Field_Control : public Play_Field_Control
 {
+  typedef Xt_Play_Field_Control self;
 public:
   virtual ~Xt_Play_Field_Control ();
   Xt_Play_Field_Control (Play_Field &model, Xt_Play_Field_View &view,
@@ -79,10 +83,15 @@ private:
   enum {TI_NORMAL = 500, TI_FAST = 100, TI_SLOW = 700, TI_FALL = 10};
   // Xt callbacks
   static void CB_start (Widget w, XtPointer a, XtPointer b);
+  void cb_start ();
   static void CB_toggle_pause (Widget w, XtPointer a, XtPointer b);
+  void cb_toggle_pause ();
   static void CB_speed_scroll (Widget w, XtPointer a, XtPointer b);
+  void cb_speed_scroll ();
   static void CB_speed_jump (Widget w, XtPointer a, XtPointer b);
+  void cb_speed_jump (const float &position);
   static void CB_timeout (XtPointer obj, XtIntervalId *id);
+  void cb_timeout ();
 
 private:
   Display *dpy() const;
