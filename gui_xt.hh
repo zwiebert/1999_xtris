@@ -10,6 +10,7 @@ class Xt_Play_Field_View;
 
 class Xt_Play_Field_View : public Play_Field_View
 {
+  typedef Xt_Play_Field_View self;
 public:
   virtual ~Xt_Play_Field_View ();
   Xt_Play_Field_View (Play_Field *model);
@@ -20,11 +21,18 @@ public: // interface to control object
 
   Widget create_play_widget (Widget parent);
   void expose_play_widget (XExposeEvent &e);
+  void draw_clear (bool defer = false);
 
   void set_preview_stone (Stone &stone) { itsNextStone = &stone; }
   Widget create_preview_widget (Widget parent);
   void expose_preview_widget (XExposeEvent &e);
   void update_preview ();
+  struct Dummy {};
+  void choose_look (void (self::*method) (unsigned row, unsigned column, GC color));
+  void draw_pixel_plain (unsigned row, unsigned column, GC color);
+  void draw_pixel_rectangle (unsigned row, unsigned column, GC color);
+  void draw_pixel_triangle (unsigned row, unsigned column, GC color);
+  void draw_pixel_circle (unsigned row, unsigned column, GC color);
 
 private:
   //** Play widget
@@ -44,7 +52,6 @@ private:
   bool make_palette ();
   void destroy_palette ();
   void draw_curtain (bool defer = false);
-  void draw_clear (bool defer = false);  // draw empty field
   void draw_flush ();  // synch with X server
   void draw_pixel (unsigned row, unsigned column, GC color, bool defer = false);
   // optimized display updating
@@ -57,6 +64,7 @@ private:
   Display *dpy() const;
   int scr_nmb() const;
 private:
+  void (self::*itsLook) (unsigned row, unsigned column, GC color);
   unsigned itsRows, itsCols;
   int width, height;
 
@@ -82,6 +90,8 @@ public:
 private:
   enum {TI_NORMAL = 500, TI_FAST = 100, TI_SLOW = 700, TI_FALL = 10};
   // Xt callbacks
+  static void CB_toggle_look (Widget w, XtPointer a, XtPointer b);
+  void cb_toggle_look ();
   static void CB_start (Widget w, XtPointer a, XtPointer b);
   void cb_start ();
   static void CB_toggle_pause (Widget w, XtPointer a, XtPointer b);
@@ -105,11 +115,10 @@ private:
   Stone **stone_set;
   unsigned nmb_stones;
   unsigned itsNextStone;
+  unsigned itsLookID;
 private:
-  /* *** Controller section (FIXME) ***  */
   XtAppContext itsAppContext;
-  /* control widgets */
-  Widget itsTopWidget, itsButtonStart, itsButtonPause, itsScrollerSpeed;
+  Widget itsTopWidget;
   /* output window widgets */
   Widget itsPlayWid, itsPreview;
 };

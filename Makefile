@@ -1,4 +1,4 @@
-CXXFLAGS=-Wall -g
+CXXFLAGS=-Wall -g -I/usr/X11R6/include -fhandle-exceptions -Wno-unused -Dstd
 
 xt_cppflags= -DPF_VIEW=Xt_Play_Field_View -DPF_CTRL=Xt_Play_Field_Control
 xtobjs= framework.o gui_xt.o main.o mvc.o playfield.o

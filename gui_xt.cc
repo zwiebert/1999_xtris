@@ -38,7 +38,7 @@ struct my_color
 };
 
 static struct my_color my_sa_palette[] = {
-  {"Gray95", 0},
+  {"Gray90", 0},
   {"Gold", 0},
   {"MediumAquamarine", 0},
   {"ForestGreen", 0},
@@ -49,8 +49,9 @@ static struct my_color my_sa_palette[] = {
   {0,}};
 
 static struct my_color my_def_palette[] = {
-  {"Gray95", 0},
   {"Gray25", 0},
+  {"Gray35", 0}, // 3D SHADOW
+  {"Gray95", 0}, // 3D LIGHT
   {0,}};
 
 static my_color *my_palette[] = {
@@ -58,9 +59,10 @@ static my_color *my_palette[] = {
 };
 
 #define SA_TO_GC(SA) (my_palette[0][SA].gc)
-#define BG_GC (my_palette[1][0].gc)
-#define FG_GC (my_palette[1][1].gc)
-
+#define BG_GC (my_palette[0][0].gc)
+#define FG_GC (my_palette[1][0].gc)
+#define SHADOW_EDGE_GC (my_palette[1][1].gc)
+#define LIGHT_EDGE_GC (my_palette[1][2].gc)
 
 
 inline Display *
@@ -103,7 +105,6 @@ Xt_Play_Field_View::init_after_realize_widgets ()
 {
   if (make_palette ())
     {
-      draw_clear ();
       return true;
     }
   return false;
@@ -145,7 +146,6 @@ void
 Xt_Play_Field_View::draw_flush ()
 {
   XSync (dpy(), False);
-  //XFlush (dpy);
 }
 
 void
@@ -177,14 +177,6 @@ CB_KeyPress (Widget widget, XtPointer closure, XEvent* event,
   continue_to_dispatch = False;
 }
 
-#if 0
-Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
-  : Play_Field_View (model)
-{
-
-}
-#endif
-
 Widget
 Xt_Play_Field_View::create_play_widget (Widget container)
 {
@@ -210,6 +202,7 @@ Xt_Play_Field_View::create_preview_widget (Widget container)
 
 Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
   : Play_Field_View (model)
+  , itsLook (&draw_pixel_rectangle)
   , itsRows (model->get_height ())
   , itsCols (model->get_width ())
   , width (XPIX * itsCols + 1)
@@ -221,23 +214,111 @@ Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
   for (unsigned i=0; i < itsRows * itsCols; ++i)
     itsDamageMap[i] = SA_BORDER; // force refresh
 
-#if 0
-  if (!make_palette ()) throw;
-  draw_clear ();
-#endif
+}
+
+
+void
+Xt_Play_Field_View::draw_pixel_triangle (unsigned row, unsigned column, GC color)
+{
+  const int h = (height / itsRows);
+  const int w = (width / itsCols);
+  const int x = column * w;
+  const int y = row * h;
+
+  XPoint pts[] = {{x,y}, {x+w-2,y}, {x+w-2,y+h-2,}, {x,y}};
+  XFillPolygon (dpy(), XtWindow (itsPlayWid), color,
+		pts, 3, Convex, CoordModeOrigin);
+  if (color == SA_TO_GC (SA_BACKGROUND))
+    XDrawLines (dpy(), XtWindow (itsPlayWid), BG_GC,
+		pts, 4, CoordModeOrigin);
+  else
+    {
+      XDrawLines (dpy(), XtWindow (itsPlayWid), LIGHT_EDGE_GC,
+		pts, 1, CoordModeOrigin);
+      XDrawLines (dpy(), XtWindow (itsPlayWid), SHADOW_EDGE_GC,
+		  &pts[1], 3, CoordModeOrigin);
+    }
+}
+
+
+void
+Xt_Play_Field_View::draw_pixel_circle (unsigned row, unsigned column, GC color)
+{
+  const int h = (height / itsRows);
+  const int w = (width / itsCols);
+  const int x = column * w;
+  const int y = row * h;
+
+  XFillArc(dpy(), XtWindow (itsPlayWid), color,
+	   x, y, w-2, h-2,
+	   0 * 64, 360 * 64);
+  if (color == SA_TO_GC (SA_BACKGROUND))
+    XDrawArc(dpy(), XtWindow (itsPlayWid), BG_GC,
+	     x, y, w-2, h-2,
+	     0 * 64, 360 * 64);
+  else
+    {
+      XDrawArc(dpy(), XtWindow (itsPlayWid), LIGHT_EDGE_GC,
+	       x, y, w-2, h-2,
+	       90 * 64, 90 * 64);
+      XDrawArc(dpy(), XtWindow (itsPlayWid), SHADOW_EDGE_GC,
+	       x, y, w-2, h-2,
+	       180 * 64, 270 * 64);
+    }
+}
+
+void
+Xt_Play_Field_View::draw_pixel_rectangle (unsigned row, unsigned column, GC color)
+{
+  const int h = (height / itsRows);
+  const int w = (width / itsCols);
+  const int x = column * w;
+  const int y = row * h;
+
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), color,
+		  column * w, row * h, w-1, h-1);
+
+  if (color == SA_TO_GC (SA_BACKGROUND))
+    XDrawRectangle (dpy(), XtWindow (itsPlayWid), BG_GC,
+		    column * w, row * h, w-1, h-1);
+  else
+    {
+      XPoint pts[] = {{x,y+h-1,}, {x,y}, {x+w-1,y},
+		      {x+w-1,y+h-1,}, {x,y+h-1,}};
+      XDrawLines (dpy(), XtWindow (itsPlayWid), LIGHT_EDGE_GC,
+		  &pts[0], 3, CoordModeOrigin);
+      XDrawLines (dpy(), XtWindow (itsPlayWid), SHADOW_EDGE_GC,
+		  &pts[2], 3, CoordModeOrigin);
+    }
+}
+
+void
+Xt_Play_Field_View::choose_look (void (self::*method) (unsigned row, unsigned column, GC color))
+{
+  itsLook = method;
+  dump_pixel_rectangle (0, 0, width, height);
+}
+
+void
+Xt_Play_Field_View::draw_pixel_plain (unsigned row, unsigned column, GC color)
+{
+  const int h = (height / itsRows);
+  const int w = (width / itsCols);
+
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), color,
+		  column * w, row * h, w, h);
+  XDrawRectangle (dpy(), XtWindow (itsPlayWid), FG_GC,
+		  column * w, row * h, w, h);
 }
 
 void
 Xt_Play_Field_View::draw_pixel (unsigned row, unsigned column, GC color,
 				bool defer)
 {
-  const int h = height / itsRows;
-  const int w = width / itsCols;
+  if (!itsLook)
+    throw;
 
-  XFillRectangle (dpy(), XtWindow (itsPlayWid), color,
-		  column * w, row * h, w, h);
-  XDrawRectangle (dpy(), XtWindow (itsPlayWid), FG_GC,
-		  column * w, row * h, w, h);
+  (this->*itsLook) (row, column, color);
   if (!defer)
     draw_flush ();
 }
@@ -250,11 +331,16 @@ Xt_Play_Field_View::dump_pixel_rectangle (unsigned pix_x, unsigned pix_y,
   Play_Field *pf = itsModel;
   if (!pf)
     return;
+  fprintf (stderr, "dump_pix_rect: %u %u %u %u\n", pix_x, pix_y, pix_width, pix_height);
+
+  XFillRectangle (dpy(), XtWindow (itsPlayWid), BG_GC, 
+		  pix_x, pix_y, pix_width, pix_height);
 
   unsigned x = max ((int)pix_x / XPIX - 1, 0);
   unsigned y = max ((int)pix_y / YPIX - 1, 0);
   unsigned width = min (pix_width / XPIX + 2, itsCols - x);
   unsigned height = min (pix_height / YPIX + 2, itsRows - y);
+  fprintf (stderr, "dump_rect: %u %u %u %u\n", x, y, width, height);
   dump_rectangle (x, y, width, height);
 }
 
@@ -398,6 +484,32 @@ Xt_Play_Field_Control::CB_toggle_pause (Widget w, XtPointer a, XtPointer b)
 
 
 void
+Xt_Play_Field_Control::cb_toggle_look ()
+{
+  switch (++itsLookID %= 4)
+    {
+    case 0:
+      itsView.choose_look (&itsView.draw_pixel_rectangle);
+      break;
+    case 1:
+      itsView.choose_look (&itsView.draw_pixel_circle);
+      break;
+    case 2:
+      itsView.choose_look (&itsView.draw_pixel_triangle);
+      break;
+    case 3:
+      itsView.choose_look (&itsView.draw_pixel_plain);
+      break;
+    }
+}
+
+void
+Xt_Play_Field_Control::CB_toggle_look (Widget w, XtPointer a, XtPointer b)
+{
+  ((self *) a)->cb_toggle_look ();
+}
+
+void
 Xt_Play_Field_Control::cb_start ()
 {
   if (isRunning)
@@ -531,6 +643,13 @@ Xt_Play_Field_Control::process_events (bool block)
 		}
 	      break;
 
+#if 0
+	case MapNotify:
+	  fprintf (stderr, "MapNotify\n");
+	  itsView.draw_clear ();
+	  break;
+#endif
+
 	case Expose:
 	  if (e.xexpose.window == XtWindow (itsPlayWid))
 	    itsView.expose_play_widget (e.xexpose);
@@ -569,7 +688,7 @@ Xt_Play_Field_Control::Xt_Play_Field_Control (Play_Field &model,
   , itsTimerIntervalDefault (TI_NORMAL)
   , itsTimerInterval (itsTimerIntervalDefault)
   , nmb_stones (0)
-  
+  , itsLookID (0)
 {
   while (stones[nmb_stones])
     ++nmb_stones;
@@ -617,25 +736,31 @@ Xt_Play_Field_Control::Xt_Play_Field_Control (Play_Field &model,
     // discrete difficulty (needed at least by hiscore lists)
     // NOTE-bw/21-Jan-99: A hiscore list is not important (but boring)!
     /*Widget speed_label =*/ MW ("speed_label", labelWidgetClass, sbox, XtNlabel, "Speed", NULL);
-    itsScrollerSpeed = MW ("speed", scrollbarWidgetClass, sbox,
+    Widget speedWid = MW ("speed", scrollbarWidgetClass, sbox,
 			   XtNwidth, 10,
 			   XtNheight, 80,
 			   //XtNfromHoriz, speed_label,
-			   NULL);
+			   (void *) 0);
+    XtAddCallback (speedWid, XtNjumpProc, CB_speed_jump, (XtPointer)this);
+    //  XtAddCallback (speedWid, XtNscrollProc, CB_speed_scroll, (XtPointer)this);
     //(void)MW ("speed_label2", labelWidgetClass, bbox, XtNlabel, "Fast", NULL);
 
 
-    Widget bbox =  MW ("bbox", boxWidgetClass, cbox,
-		       XtNorientation, XtorientVertical,
-		       0);
-    // top.box.bbox.button
-    Widget button = MW ("Quit", commandWidgetClass, bbox, NULL);
-    XtAddCallback(button, XtNcallback, Stop, NULL);
-    // top.box.bbox.button2
-    itsButtonStart = MW ("Start", commandWidgetClass, bbox, NULL);
-    // top.box.bbox.button3
-    itsButtonPause = MW ("Pause", toggleWidgetClass, bbox, NULL);
-
+    // top.box.bbox
+    Widget bbox = MW ("bbox", boxWidgetClass, cbox,
+		      XtNorientation, XtorientVertical, (void *)0);
+    // top.box.bbox.Quit
+    XtAddCallback(MW ("Quit", commandWidgetClass, bbox, (void *)0),
+		  XtNcallback, Stop, (void *)0);
+    // top.box.bbox.Start
+    XtAddCallback (MW ("Start", commandWidgetClass, bbox, (void *)0),
+		   XtNcallback, CB_start, (XtPointer) this);
+    // top.box.bbox.Pause
+    XtAddCallback (MW ("Pause", toggleWidgetClass, bbox, (void *)0),
+		   XtNcallback, CB_toggle_pause, (XtPointer) this);
+    // top.box.bbox.Look
+    XtAddCallback (MW ("Look", commandWidgetClass, bbox, (void *)0),
+		   XtNcallback, CB_toggle_look, (XtPointer) this);
 
     // top.viewport
     itsPlayWid = itsView.create_play_widget (box);
@@ -656,21 +781,14 @@ Xt_Play_Field_Control::Xt_Play_Field_Control (Play_Field &model,
     }
   {
     XSetWindowAttributes wa;
-    wa.event_mask = (ExposureMask | KeyPressMask | KeyReleaseMask);
+    wa.event_mask = (ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     XChangeWindowAttributes (dpy(), XtWindow (itsTopWidget), CWEventMask, &wa);
-    wa.event_mask = (ExposureMask);
+    wa.event_mask = (ExposureMask | StructureNotifyMask);
     XChangeWindowAttributes (dpy(), XtWindow (itsPlayWid), CWEventMask, &wa);
     XChangeWindowAttributes (dpy(), XtWindow (itsPreview), CWEventMask, &wa);
   }
 
   if (!itsView.init_after_realize_widgets ()) throw;
 
-  // callbacks
-  XtAddCallback (itsButtonStart, XtNcallback, CB_start,
-		 (XtPointer) this);
-  XtAddCallback (itsButtonPause, XtNcallback,
-		 CB_toggle_pause, (XtPointer) this);
-  XtAddCallback (itsScrollerSpeed, XtNjumpProc, CB_speed_jump, (XtPointer)this);
-  //  XtAddCallback (itsScrollerSpeed, XtNscrollProc, CB_speed_scroll, (XtPointer)this);
 }
 
