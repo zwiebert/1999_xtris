@@ -27,7 +27,7 @@ public:
 	 {1, 1, 0, 0},
 	 {1, 0, 0, 0},
 	 {0, 0, 0, 0}}};
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap)); //      itsBitMap = tmp;
     }
 };
 
@@ -53,7 +53,7 @@ public:
 	 {1, 1, 0, 0},
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0}}};
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));
     }
 };
 
@@ -79,7 +79,7 @@ public:
 	 {1, 0, 0, 0},
 	 {1, 0, 0, 0},
 	 {1, 0, 0, 0}}};
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));  //      itsBitMap = tmp;
     }
 };
 
@@ -106,7 +106,7 @@ public:
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0}}};
 
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));  // itsBitMap = tmp;
     }
 };
 
@@ -133,7 +133,7 @@ public:
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0}}};
 
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));  // itsBitMap = tmp;
     }
 };
 
@@ -160,7 +160,7 @@ public:
 	 {0, 1, 0, 0},
 	 {0, 0, 0, 0}}};
 
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));  //itsBitMap = tmp;
     }
 };
 
@@ -187,7 +187,7 @@ public:
 	 {1, 0, 0, 0},
 	 {0, 0, 0, 0}}};
 
-      itsBitMap = tmp;
+      memcpy (itsBitMap, tmp, sizeof (itsBitMap));  //itsBitMap = tmp;
     }
 };
 

@@ -11,6 +11,7 @@
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
+#include <X11/keysymdef.h>
 
 #include <X11/Xaw/Command.h>
 #include <X11/Xaw/Viewport.h>
@@ -21,6 +22,7 @@
 #include <X11/Xaw/Scrollbar.h>
 #include <X11/Xaw/Label.h>
 
+using namespace std;
 
 #define MAX_CVALUE 65535	/* per X11 definition */
 enum {XPIX=16, YPIX=16};
@@ -202,7 +204,7 @@ Xt_Play_Field_View::create_preview_widget (Widget container)
 
 Xt_Play_Field_View::Xt_Play_Field_View (Play_Field *model)
   : Play_Field_View (model)
-  , itsLook (&draw_pixel_rectangle)
+  , itsLook (&Xt_Play_Field_View::draw_pixel_rectangle)
   , itsRows (model->get_height ())
   , itsCols (model->get_width ())
   , width (XPIX * itsCols + 1)
@@ -489,16 +491,16 @@ Xt_Play_Field_Control::cb_toggle_look ()
   switch (++itsLookID %= 4)
     {
     case 0:
-      itsView.choose_look (&itsView.draw_pixel_rectangle);
+      itsView.choose_look (&Xt_Play_Field_View::draw_pixel_rectangle);
       break;
     case 1:
-      itsView.choose_look (&itsView.draw_pixel_circle);
+      itsView.choose_look (&Xt_Play_Field_View::draw_pixel_circle);
       break;
     case 2:
-      itsView.choose_look (&itsView.draw_pixel_triangle);
+      itsView.choose_look (&Xt_Play_Field_View::draw_pixel_triangle);
       break;
     case 3:
-      itsView.choose_look (&itsView.draw_pixel_plain);
+      itsView.choose_look (&Xt_Play_Field_View::draw_pixel_plain);
       break;
     }
 }
@@ -600,21 +602,21 @@ Xt_Play_Field_Control::process_events (bool block)
       switch (e.type)
 	{
 	case KeyPress:
-	  switch (e.xkey.keycode)
+	  switch (XKeycodeToKeysym(e.xkey.display, e.xkey.keycode, 0))
 	    {
-	    case 100: //XK_Left:
+	    case XK_Left:
 	      itsModel.move_stone (DIR_WEST);
 	      itsModel.notify_views ();
 	      goto parent;
-	    case 102: //XK_Right:
+	    case XK_Right:
 	      itsModel.move_stone (DIR_EAST);
 	      itsModel.notify_views ();
 	      goto parent;
-	    case 98: // XK_Up:
+	    case XK_Up:
 	      itsModel.rotate_stone_90_cw ();
 	      itsModel.notify_views ();
 	      goto parent;
-	    case 104: // XK_Down:
+	    case XK_Down:
 	      if (isTimerRunning)
 		{
 		  XtRemoveTimeOut (itsTimer);
@@ -623,14 +625,15 @@ Xt_Play_Field_Control::process_events (bool block)
 		}
 	      goto parent;
 	    default:
+	      printf("key: %d\n", (int)e.xkey.keycode);
 	      goto parent;
 	    }
 	  break;
 
 	    case KeyRelease:
-	      switch (e.xkey.keycode)
+	      switch (XKeycodeToKeysym(e.xkey.display, e.xkey.keycode, 0))
 		{
-		case 104: // XK_Down:
+		case XK_Down:
 		  if (isTimerRunning)
 		    {
 		      XtRemoveTimeOut (itsTimer);

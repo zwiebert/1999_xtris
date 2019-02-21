@@ -4,6 +4,7 @@
 #include "gui_xt.hh"
 #include "stones.hh"
 #include <unistd.h>
+#include <ctime>
 
 struct Tetris
 {
@@ -19,7 +20,7 @@ struct Tetris
       for (unsigned i=0; i < nmb_stones; ++i)
 	stone_set[i] = stones[i];
     }
-  play ();
+  int play ();
 private:
   Tetris_Play_Field field;
   PF_VIEW view;

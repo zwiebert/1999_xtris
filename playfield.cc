@@ -1,5 +1,5 @@
 #include "playfield.hh"
-
+#include <cstring>
 Tetris_Play_Field::Tetris_Play_Field (int width, int height)
   : Play_Field (width, height)
   , itsXPos (0), itsYPos (0), itsAngle (Stone::SAL_NORMAL)

@@ -8,6 +8,7 @@
 
 #include <X11/Xutil.h>
 
+#include <X11/keysymdef.h>
 
 #define MAX_CVALUE 65535	/* per X11 definition */
 
